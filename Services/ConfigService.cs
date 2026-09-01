@@ -77,6 +77,8 @@ namespace Quick_Sab.Services
             c.Hotkey ??= new HotkeyConfig();
             c.Colors ??= CreateDefault().Colors;
             c.GitRepos ??= new ObservableCollection<GitRepo>();
+            c.CurrentGitRepo ??= "";
+            c.Crypto ??= new CryptoConfig();
             c.Variables ??= new ObservableCollection<VariableEntry>();
             c.Panels ??= new ObservableCollection<PinPanel>();
             c.Items ??= new ObservableCollection<ActionItem>();

@@ -50,6 +50,10 @@ namespace Quick_Sab.Views
             HideOnFocusLostBox.IsChecked = _cfg.HideOnFocusLost;
             ConfigPathBox.Text = ConfigService.ConfigPath;
 
+            AesKeyBox.Text = _cfg.Crypto.Key;
+            AesIvBox.Text = _cfg.Crypto.IV;
+            UpdateAesCounts();
+
             foreach (var name in new[] { "Share", "Web", "Command" })
             {
                 _cfg.Colors.TryGetValue(name, out var hex);
@@ -215,6 +219,34 @@ namespace Quick_Sab.Views
             Process.Start(new ProcessStartInfo { FileName = ConfigService.ConfigPath, UseShellExecute = true });
         }
 
+        // ---------------- Crypto ----------------
+
+        private void Aes_TextChanged(object sender, TextChangedEventArgs e) => UpdateAesCounts();
+
+        private void UpdateAesCounts()
+        {
+            if (AesKeyCount == null || AesIvCount == null) return;
+            AesKeyCount.Text = (AesKeyBox.Text ?? "").Length + " / " + CryptoService.KeyLength;
+            AesIvCount.Text = (AesIvBox.Text ?? "").Length + " / " + CryptoService.IvLength;
+        }
+
+        private void GenerateAes_Click(object sender, RoutedEventArgs e)
+        {
+            AesKeyBox.Text = RandomToken(CryptoService.KeyLength);
+            AesIvBox.Text = RandomToken(CryptoService.IvLength);
+        }
+
+        private static string RandomToken(int length)
+        {
+            const string charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            var bytes = new byte[length];
+            using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+                rng.GetBytes(bytes);
+            var chars = new char[length];
+            for (var i = 0; i < length; i++) chars[i] = charset[bytes[i] % charset.Length];
+            return new string(chars);
+        }
+
         // ---------------- Colours ----------------
 
         private void PickColor_Click(object sender, RoutedEventArgs e)
@@ -284,6 +316,20 @@ namespace Quick_Sab.Views
                              .ToList())
                     panel.Keys.Remove(orphan);
             }
+
+            var aesKey = AesKeyBox.Text ?? "";
+            var aesIv = AesIvBox.Text ?? "";
+            if (aesKey.Length > 0 || aesIv.Length > 0)
+            {
+                var aesError = CryptoService.Validate(aesKey, aesIv);
+                if (aesError != null)
+                {
+                    MessageBox.Show(this, aesError, "Quick_Sab", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
+            _cfg.Crypto.Key = aesKey;
+            _cfg.Crypto.IV = aesIv;
 
             _cfg.Hotkey = hotkey;
             _cfg.HideAfterAction = HideAfterActionBox.IsChecked == true;

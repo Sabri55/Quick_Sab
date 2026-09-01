@@ -29,12 +29,14 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="⚡ Quick_Sab" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" x:Name="HotkeyLabel" Text="" Margin="12,0,0,0" FontSize="12"
                            Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
-                <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="⚙" ToolTip="Settings" Click="Config_Click" />
-                <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="✕" ToolTip="Hide (Esc)" Click="Hide_Click" />
+                <Button Grid.Column="2" Style="{StaticResource IconButton}" FontFamily="Segoe MDL2 Assets" Content="&#xE72E;" FontSize="14" ToolTip="AES encrypt / decrypt" Click="Crypto_Click" />
+                <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="⚙" ToolTip="Settings" Click="Config_Click" />
+                <Button Grid.Column="4" Style="{StaticResource IconButton}" Content="✕" ToolTip="Hide (Esc)" Click="Hide_Click" />
             </Grid>
 
             <!-- Filter -->
@@ -129,6 +131,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" Margin="0,0,0,4">
@@ -211,6 +214,29 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
+
+                    <!-- Git repositories -->
+                    <Grid Grid.Row="2" Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="GIT REPO" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <ComboBox Grid.Column="1" x:Name="GitRepoCombo" VerticalContentAlignment="Center"
+                                  ToolTip="Double-click to open the selected repository folder"
+                                  SelectionChanged="GitRepoCombo_SelectionChanged"
+                                  MouseDoubleClick="GitRepoCombo_MouseDoubleClick">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Path}" Margin="8,0,0,0" Opacity="0.6" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </Grid>
                 </Grid>
             </Border>
         </Grid>

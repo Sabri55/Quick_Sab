@@ -38,6 +38,7 @@ namespace Quick_Sab.Views
         private WinForms.NotifyIcon _tray;
         private bool _exiting;
         private bool _suppressHide;
+        private bool _refreshingRepos;
 
         public MainWindow()
         {
@@ -167,6 +168,21 @@ namespace Quick_Sab.Views
                 _panels.Add(vm);
             }
 
+            _refreshingRepos = true;
+            try
+            {
+                GitRepoCombo.ItemsSource = cfg.GitRepos;
+                GitRepoCombo.SelectedItem = string.IsNullOrWhiteSpace(cfg.CurrentGitRepo)
+                    ? null
+                    : cfg.GitRepos.FirstOrDefault(
+                        r => string.Equals(r.Name, cfg.CurrentGitRepo, StringComparison.OrdinalIgnoreCase));
+            }
+            finally
+            {
+                _refreshingRepos = false;
+            }
+            CurrentGitRepo = GitRepoCombo.SelectedItem as GitRepo;
+
             UpdateSuggestions();
         }
 
@@ -197,6 +213,16 @@ namespace Quick_Sab.Views
             RunDialog(() =>
             {
                 var win = new ConfigWindow();
+                if (IsVisible) win.Owner = this;
+                return win.ShowDialog();
+            });
+        }
+
+        private void Crypto_Click(object sender, RoutedEventArgs e)
+        {
+            RunDialog(() =>
+            {
+                var win = new CryptoWindow();
                 if (IsVisible) win.Owner = this;
                 return win.ShowDialog();
             });
@@ -350,6 +376,56 @@ namespace Quick_Sab.Views
             }
 
             FilterBox.Text = "";
+            if (ConfigService.Current.HideAfterAction)
+                HideLauncher();
+        }
+
+        // ------------------------------------------------------------------
+        // Git repositories
+        // ------------------------------------------------------------------
+
+        /// <summary>Git repository currently selected in the combo box below the panels (null if none).
+        /// Also available as {{CurrentGitRepo}} in action values.</summary>
+        public GitRepo CurrentGitRepo
+        {
+            get => VariableResolver.CurrentGitRepo;
+            private set => VariableResolver.CurrentGitRepo = value;
+        }
+
+        private void GitRepoCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            CurrentGitRepo = GitRepoCombo.SelectedItem as GitRepo;
+            if (_refreshingRepos) return;
+
+            // Persist the selection so it is restored on the next start.
+            var cfg = ConfigService.Current;
+            var name = CurrentGitRepo?.Name ?? "";
+            if (!string.Equals(cfg.CurrentGitRepo ?? "", name, StringComparison.OrdinalIgnoreCase))
+            {
+                cfg.CurrentGitRepo = name;
+                ConfigService.Save(cfg);
+            }
+        }
+
+        private void GitRepoCombo_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (!(GitRepoCombo.SelectedItem is GitRepo repo) || string.IsNullOrWhiteSpace(repo.Path)) return;
+
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = repo.Path,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                RunDialog(() => MessageBox.Show(this, "Cannot open \"" + repo.Path + "\":\n" + ex.Message,
+                    "Quick_Sab", MessageBoxButton.OK, MessageBoxImage.Error));
+                return;
+            }
+
             if (ConfigService.Current.HideAfterAction)
                 HideLauncher();
         }

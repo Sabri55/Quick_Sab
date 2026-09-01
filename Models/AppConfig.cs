@@ -70,6 +70,13 @@ namespace Quick_Sab.Models
         public string Path { get => _path; set => Set(ref _path, value); }
     }
 
+    /// <summary>AES settings for the encrypt / decrypt window (Key = 32 chars, IV = 16 chars).</summary>
+    public class CryptoConfig
+    {
+        public string Key { get; set; } = "";
+        public string IV { get; set; } = "";
+    }
+
     /// <summary>Free variable {{Name}} -> Value.</summary>
     public class VariableEntry : NotifyBase
     {
@@ -142,6 +149,12 @@ namespace Quick_Sab.Models
         };
 
         public ObservableCollection<GitRepo> GitRepos { get; set; } = new ObservableCollection<GitRepo>();
+
+        /// <summary>Name of the git repository selected in the launcher combo box (persisted across restarts).</summary>
+        public string CurrentGitRepo { get; set; } = "";
+
+        /// <summary>AES Key / IV used by the encrypt / decrypt window.</summary>
+        public CryptoConfig Crypto { get; set; } = new CryptoConfig();
 
         public ObservableCollection<VariableEntry> Variables { get; set; } = new ObservableCollection<VariableEntry>();
 

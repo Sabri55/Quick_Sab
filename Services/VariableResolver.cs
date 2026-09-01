@@ -11,10 +11,14 @@ namespace Quick_Sab.Services
     ///   {{git:name}}    -> path of the git repository named "name"
     ///   {{name}}        -> git repository named "name" (path) or free variable "name"
     ///   {{env:VAR}}     -> environment variable
+    ///   {{CurrentGitRepo}} -> path of the repository selected in the launcher list
     /// </summary>
     public static class VariableResolver
     {
         private static readonly Regex Pattern = new Regex(@"\{\{\s*([^{}]+?)\s*\}\}", RegexOptions.Compiled);
+
+        /// <summary>Git repository currently selected in the launcher list (set by MainWindow; may be null).</summary>
+        public static GitRepo CurrentGitRepo { get; set; }
 
         public static string Resolve(string input, AppConfig config)
         {
@@ -32,6 +36,9 @@ namespace Quick_Sab.Services
         private static string ResolveOne(string name, AppConfig config)
         {
             var lower = name.ToLowerInvariant();
+
+            if (lower == "currentgitrepo")
+                return CurrentGitRepo?.Path;
 
             if (lower.StartsWith("git_path_") && int.TryParse(name.Substring(9), out var idx))
                 return idx >= 1 && idx <= config.GitRepos.Count ? config.GitRepos[idx - 1].Path : null;

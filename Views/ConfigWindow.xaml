@@ -187,6 +187,35 @@
                 </StackPanel>
             </TabItem>
 
+            <!-- ===================== CRYPTO ===================== -->
+            <TabItem Header="Crypto (AES)">
+                <StackPanel Margin="12" MaxWidth="620" HorizontalAlignment="Left">
+                    <TextBlock Text="AES encryption (AES-256-CBC)" FontWeight="Bold" FontSize="14" Margin="0,0,0,8" />
+                    <TextBlock Style="{StaticResource Hint}">
+                        Key and IV used by the encrypt / decrypt window (\U0001F510 button in the launcher).
+                        The Key must be exactly 32 characters and the IV 16 characters (ASCII).
+                    </TextBlock>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                        <TextBlock Text="Key (32 chars):" Width="110" VerticalAlignment="Center" />
+                        <TextBox x:Name="AesKeyBox" Width="380" Padding="6,4" FontFamily="Consolas"
+                                 MaxLength="32" TextChanged="Aes_TextChanged" />
+                        <TextBlock x:Name="AesKeyCount" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#666" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                        <TextBlock Text="IV (16 chars):" Width="110" VerticalAlignment="Center" />
+                        <TextBox x:Name="AesIvBox" Width="380" Padding="6,4" FontFamily="Consolas"
+                                 MaxLength="16" TextChanged="Aes_TextChanged" />
+                        <TextBlock x:Name="AesIvCount" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#666" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Generate random Key + IV" Padding="10,4" Click="GenerateAes_Click" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,12,0,0">
+                        \u26A0 The Key and IV are stored in plain text in config.json.
+                    </TextBlock>
+                </StackPanel>
+            </TabItem>
+
             <!-- ===================== COLOURS ===================== -->
             <TabItem Header="Colors">
                 <StackPanel Margin="12" HorizontalAlignment="Left">
