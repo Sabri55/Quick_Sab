@@ -16,7 +16,10 @@ namespace Quick_Sab.Models
         Web,
 
         /// <summary>Runs a command through cmd.exe.</summary>
-        Command
+        Command,
+
+        /// <summary>Runs a multi-line cmd script through a temporary .cmd file.</summary>
+        Script
     }
 
     public class NotifyBase : INotifyPropertyChanged
@@ -46,8 +49,20 @@ namespace Quick_Sab.Models
         /// <summary>Key displayed and used by the filter.</summary>
         public string Key { get => _key; set => Set(ref _key, value); }
 
-        /// <summary>Value: UNC path, URL or command line. May contain {{variables}}.</summary>
-        public string Value { get => _value; set => Set(ref _value, value); }
+        /// <summary>Value: UNC path, URL, command line or script content. May contain {{variables}}.</summary>
+        public string Value { get => _value; set { Set(ref _value, value); Raise(nameof(ValueDisplay)); } }
+
+        /// <summary>First line of the value, for single-line display in the suggestion list.</summary>
+        [JsonIgnore]
+        public string ValueDisplay
+        {
+            get
+            {
+                var v = _value ?? "";
+                var i = v.IndexOfAny(new[] { '\r', '\n' });
+                return i < 0 ? v : v.Substring(0, i) + " ...";
+            }
+        }
 
         public ActionType Type { get => _type; set => Set(ref _type, value); }
 
@@ -75,6 +90,47 @@ namespace Quick_Sab.Models
     {
         public string Key { get; set; } = "";
         public string IV { get; set; } = "";
+    }
+
+    /// <summary>Named multi-line cmd script callable from the launcher filter.</summary>
+    public class ScriptEntry : NotifyBase
+    {
+        private string _name = "";
+        private string _description = "";
+        private string _content = "";
+        private string _workingDirectory = "";
+        private bool _keepWindowOpen = true;
+
+        /// <summary>Name typed in the launcher filter to run the script.</summary>
+        public string Name { get => _name; set => Set(ref _name, value); }
+
+        public string Description { get => _description; set => Set(ref _description, value); }
+
+        /// <summary>Multi-line cmd script. May contain {{variables}}.</summary>
+        public string Content { get => _content; set => Set(ref _content, value); }
+
+        /// <summary>Working directory (supports {{variables}}).</summary>
+        public string WorkingDirectory { get => _workingDirectory; set => Set(ref _workingDirectory, value); }
+
+        /// <summary>Keep the cmd window open after execution (cmd /k).</summary>
+        public bool KeepWindowOpen { get => _keepWindowOpen; set => Set(ref _keepWindowOpen, value); }
+    }
+
+    /// <summary>One regex pattern row for the package comparison.</summary>
+    public class PackagePattern : NotifyBase
+    {
+        private string _pattern = "";
+        public string Pattern { get => _pattern; set => Set(ref _pattern, value); }
+    }
+
+    /// <summary>Package comparison between a source and a target folder.</summary>
+    public class PackageCompareConfig
+    {
+        public string SourcePath { get; set; } = "";
+        public string TargetPath { get; set; } = "";
+
+        /// <summary>Regexes matched against the entry names of the source folder (empty = all entries).</summary>
+        public ObservableCollection<PackagePattern> Patterns { get; set; } = new ObservableCollection<PackagePattern>();
     }
 
     /// <summary>Free variable {{Name}} -> Value.</summary>
@@ -145,16 +201,23 @@ namespace Quick_Sab.Models
         {
             ["Share"] = "#F59E0B",
             ["Web"] = "#e41414",
-            ["Command"] = "#3B82F6"
+            ["Command"] = "#3B82F6",
+            ["Script"] = "#A855F7"
         };
 
         public ObservableCollection<GitRepo> GitRepos { get; set; } = new ObservableCollection<GitRepo>();
 
-        /// <summary>Name of the git repository selected in the launcher combo box (persisted across restarts).</summary>
+        /// <summary>Path of the git repository selected in the launcher combo box (persisted across restarts).</summary>
         public string CurrentGitRepo { get; set; } = "";
 
         /// <summary>AES Key / IV used by the encrypt / decrypt window.</summary>
         public CryptoConfig Crypto { get; set; } = new CryptoConfig();
+
+        /// <summary>Package comparison settings (source / target folders + name patterns).</summary>
+        public PackageCompareConfig PackageCompare { get; set; } = new PackageCompareConfig();
+
+        /// <summary>Named cmd scripts callable from the launcher filter.</summary>
+        public ObservableCollection<ScriptEntry> Scripts { get; set; } = new ObservableCollection<ScriptEntry>();
 
         public ObservableCollection<VariableEntry> Variables { get; set; } = new ObservableCollection<VariableEntry>();
 

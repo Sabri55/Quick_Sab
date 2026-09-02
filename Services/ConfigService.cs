@@ -79,11 +79,14 @@ namespace Quick_Sab.Services
             c.GitRepos ??= new ObservableCollection<GitRepo>();
             c.CurrentGitRepo ??= "";
             c.Crypto ??= new CryptoConfig();
+            c.PackageCompare ??= new PackageCompareConfig();
+            c.PackageCompare.Patterns ??= new ObservableCollection<PackagePattern>();
             c.Variables ??= new ObservableCollection<VariableEntry>();
             c.Panels ??= new ObservableCollection<PinPanel>();
             c.Items ??= new ObservableCollection<ActionItem>();
+            c.Scripts ??= new ObservableCollection<ScriptEntry>();
 
-            foreach (var name in new[] { "Share", "Web", "Command" })
+            foreach (var name in new[] { "Share", "Web", "Command", "Script" })
             {
                 if (!c.Colors.ContainsKey(name))
                     c.Colors[name] = CreateDefault().Colors[name];

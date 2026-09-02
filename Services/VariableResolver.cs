@@ -12,6 +12,7 @@ namespace Quick_Sab.Services
     ///   {{name}}        -> git repository named "name" (path) or free variable "name"
     ///   {{env:VAR}}     -> environment variable
     ///   {{CurrentGitRepo}} -> path of the repository selected in the launcher list
+    ///   {{path_target}} / {{patch_target}} -> package compare target folder ({{path_source}} for the source)
     /// </summary>
     public static class VariableResolver
     {
@@ -39,6 +40,12 @@ namespace Quick_Sab.Services
 
             if (lower == "currentgitrepo")
                 return CurrentGitRepo?.Path;
+
+            if (lower == "path_target" || lower == "patch_target")
+                return string.IsNullOrEmpty(config.PackageCompare?.TargetPath) ? null : config.PackageCompare.TargetPath;
+
+            if (lower == "path_source" || lower == "patch_source")
+                return string.IsNullOrEmpty(config.PackageCompare?.SourcePath) ? null : config.PackageCompare.SourcePath;
 
             if (lower.StartsWith("git_path_") && int.TryParse(name.Substring(9), out var idx))
                 return idx >= 1 && idx <= config.GitRepos.Count ? config.GitRepos[idx - 1].Path : null;

@@ -175,7 +175,9 @@ namespace Quick_Sab.Views
                 GitRepoCombo.SelectedItem = string.IsNullOrWhiteSpace(cfg.CurrentGitRepo)
                     ? null
                     : cfg.GitRepos.FirstOrDefault(
-                        r => string.Equals(r.Name, cfg.CurrentGitRepo, StringComparison.OrdinalIgnoreCase));
+                          r => string.Equals(r.Path, cfg.CurrentGitRepo, StringComparison.OrdinalIgnoreCase))
+                      ?? cfg.GitRepos.FirstOrDefault( // legacy configs stored the name
+                          r => string.Equals(r.Name, cfg.CurrentGitRepo, StringComparison.OrdinalIgnoreCase));
             }
             finally
             {
@@ -197,9 +199,30 @@ namespace Quick_Sab.Views
             }
         }
 
+        /// <summary>Configured actions plus the named scripts wrapped as Script-typed actions.</summary>
+        private static List<ActionItem> AllItems()
+        {
+            var cfg = ConfigService.Current;
+            var list = new List<ActionItem>(cfg.Items);
+            foreach (var s in cfg.Scripts)
+            {
+                if (string.IsNullOrWhiteSpace(s.Name)) continue;
+                list.Add(new ActionItem
+                {
+                    Key = s.Name,
+                    Value = s.Content,
+                    Type = ActionType.Script,
+                    Description = s.Description,
+                    WorkingDirectory = s.WorkingDirectory,
+                    KeepWindowOpen = s.KeepWindowOpen
+                });
+            }
+            return list;
+        }
+
         private static ActionItem FindByKey(string key)
         {
-            return ConfigService.Current.Items.FirstOrDefault(
+            return AllItems().FirstOrDefault(
                 i => string.Equals(i.Key, key, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -228,6 +251,31 @@ namespace Quick_Sab.Views
             });
         }
 
+        private void PackageCompare_Click(object sender, RoutedEventArgs e)
+        {
+            RunDialog(() =>
+            {
+                var win = new PackageCompareWindow();
+                if (IsVisible) win.Owner = this;
+                return win.ShowDialog();
+            });
+        }
+
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            OpenAbout();
+        }
+
+        private void OpenAbout()
+        {
+            RunDialog(() =>
+            {
+                var win = new AboutWindow();
+                if (IsVisible) win.Owner = this;
+                return win.ShowDialog();
+            });
+        }
+
         // ------------------------------------------------------------------
         // Filter / autocomplete
         // ------------------------------------------------------------------
@@ -241,7 +289,7 @@ namespace Quick_Sab.Views
         private void UpdateSuggestions()
         {
             var text = (FilterBox.Text ?? "").Trim();
-            var items = ConfigService.Current.Items;
+            var items = AllItems();
 
             IEnumerable<ActionItem> result;
             if (string.IsNullOrEmpty(text))
@@ -397,12 +445,12 @@ namespace Quick_Sab.Views
             CurrentGitRepo = GitRepoCombo.SelectedItem as GitRepo;
             if (_refreshingRepos) return;
 
-            // Persist the selection so it is restored on the next start.
+            // Persist the selection (repository path) so it is restored on the next start.
             var cfg = ConfigService.Current;
-            var name = CurrentGitRepo?.Name ?? "";
-            if (!string.Equals(cfg.CurrentGitRepo ?? "", name, StringComparison.OrdinalIgnoreCase))
+            var path = CurrentGitRepo?.Path ?? "";
+            if (!string.Equals(cfg.CurrentGitRepo ?? "", path, StringComparison.OrdinalIgnoreCase))
             {
-                cfg.CurrentGitRepo = name;
+                cfg.CurrentGitRepo = path;
                 ConfigService.Save(cfg);
             }
         }
@@ -617,6 +665,7 @@ namespace Quick_Sab.Views
                 }
                 catch (Exception ex) { MessageBox.Show(ex.Message, "Quick_Sab"); }
             });
+            menu.Items.Add("About...", null, (s, e) => { ShowLauncher(); OpenAbout(); });
             menu.Items.Add(new WinForms.ToolStripSeparator());
             menu.Items.Add("Exit", null, (s, e) => ExitApplication());
             _tray.ContextMenuStrip = menu;

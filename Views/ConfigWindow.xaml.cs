@@ -54,6 +54,11 @@ namespace Quick_Sab.Views
             AesIvBox.Text = _cfg.Crypto.IV;
             UpdateAesCounts();
 
+            PkgSourceBox.Text = _cfg.PackageCompare.SourcePath;
+            PkgTargetBox.Text = _cfg.PackageCompare.TargetPath;
+            PatternsGrid.ItemsSource = _cfg.PackageCompare.Patterns;
+            ScriptsList.ItemsSource = _cfg.Scripts;
+
             foreach (var name in new[] { "Share", "Web", "Command" })
             {
                 _cfg.Colors.TryGetValue(name, out var hex);
@@ -219,6 +224,56 @@ namespace Quick_Sab.Views
             Process.Start(new ProcessStartInfo { FileName = ConfigService.ConfigPath, UseShellExecute = true });
         }
 
+        // ---------------- Scripts ----------------
+
+        private void ScriptsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            ScriptEditor.DataContext = ScriptsList.SelectedItem;
+            ScriptEditor.IsEnabled = ScriptsList.SelectedItem != null;
+        }
+
+        private void AddScript_Click(object sender, RoutedEventArgs e)
+        {
+            var s = new ScriptEntry { Name = "new_script", Content = "@echo off\r\n" };
+            _cfg.Scripts.Add(s);
+            ScriptsList.SelectedItem = s;
+            ScriptsList.ScrollIntoView(s);
+        }
+
+        private void RemoveScript_Click(object sender, RoutedEventArgs e)
+        {
+            if (ScriptsList.SelectedItem is ScriptEntry s) _cfg.Scripts.Remove(s);
+        }
+
+        // ---------------- Packages ----------------
+
+        private void BrowsePkgSource_Click(object sender, RoutedEventArgs e) => BrowseInto(PkgSourceBox);
+        private void BrowsePkgTarget_Click(object sender, RoutedEventArgs e) => BrowseInto(PkgTargetBox);
+
+        private static void BrowseInto(TextBox box)
+        {
+            using (var dlg = new WinForms.FolderBrowserDialog())
+            {
+                if (Directory.Exists(box.Text)) dlg.SelectedPath = box.Text;
+                if (dlg.ShowDialog() == WinForms.DialogResult.OK) box.Text = dlg.SelectedPath;
+            }
+        }
+
+        private void AddPattern_Click(object sender, RoutedEventArgs e)
+        {
+            var p = new PackagePattern { Pattern = "" };
+            _cfg.PackageCompare.Patterns.Add(p);
+            PatternsGrid.SelectedItem = p;
+            PatternsGrid.ScrollIntoView(p);
+            PatternsGrid.CurrentCell = new DataGridCellInfo(p, PatternsGrid.Columns[0]);
+            PatternsGrid.BeginEdit();
+        }
+
+        private void RemovePattern_Click(object sender, RoutedEventArgs e)
+        {
+            if (PatternsGrid.SelectedItem is PackagePattern p) _cfg.PackageCompare.Patterns.Remove(p);
+        }
+
         // ---------------- Crypto ----------------
 
         private void Aes_TextChanged(object sender, TextChangedEventArgs e) => UpdateAesCounts();
@@ -275,6 +330,7 @@ namespace Quick_Sab.Views
             PanelsGrid.CommitEdit(DataGridEditingUnit.Row, true);
             ReposGrid.CommitEdit(DataGridEditingUnit.Row, true);
             VarsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            PatternsGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
             var hotkey = BuildHotkey();
             if (string.IsNullOrWhiteSpace(hotkey.Key))
@@ -308,11 +364,13 @@ namespace Quick_Sab.Views
             foreach (var empty in _cfg.Items.Where(i => string.IsNullOrWhiteSpace(i.Key)).ToList()) _cfg.Items.Remove(empty);
             foreach (var empty in _cfg.GitRepos.Where(r => string.IsNullOrWhiteSpace(r.Path)).ToList()) _cfg.GitRepos.Remove(empty);
             foreach (var empty in _cfg.Variables.Where(v => string.IsNullOrWhiteSpace(v.Name)).ToList()) _cfg.Variables.Remove(empty);
+            foreach (var empty in _cfg.Scripts.Where(s => string.IsNullOrWhiteSpace(s.Name)).ToList()) _cfg.Scripts.Remove(empty);
             foreach (var panel in _cfg.Panels)
             {
                 if (string.IsNullOrWhiteSpace(panel.Name)) panel.Name = ConfigService.DefaultPanelName;
                 foreach (var orphan in panel.Keys
-                             .Where(k => !_cfg.Items.Any(i => string.Equals(i.Key, k, StringComparison.OrdinalIgnoreCase)))
+                             .Where(k => !_cfg.Items.Any(i => string.Equals(i.Key, k, StringComparison.OrdinalIgnoreCase))
+                                      && !_cfg.Scripts.Any(s => string.Equals(s.Name, k, StringComparison.OrdinalIgnoreCase)))
                              .ToList())
                     panel.Keys.Remove(orphan);
             }
@@ -330,6 +388,21 @@ namespace Quick_Sab.Views
             }
             _cfg.Crypto.Key = aesKey;
             _cfg.Crypto.IV = aesIv;
+
+            _cfg.PackageCompare.SourcePath = (PkgSourceBox.Text ?? "").Trim();
+            _cfg.PackageCompare.TargetPath = (PkgTargetBox.Text ?? "").Trim();
+            foreach (var emptyPattern in _cfg.PackageCompare.Patterns
+                         .Where(p => string.IsNullOrWhiteSpace(p.Pattern)).ToList())
+                _cfg.PackageCompare.Patterns.Remove(emptyPattern);
+            try
+            {
+                PackageCompareService.CompilePatterns(_cfg.PackageCompare);
+            }
+            catch (ArgumentException ex)
+            {
+                MessageBox.Show(this, ex.Message, "Quick_Sab", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             _cfg.Hotkey = hotkey;
             _cfg.HideAfterAction = HideAfterActionBox.IsChecked == true;

@@ -216,6 +216,133 @@
                 </StackPanel>
             </TabItem>
 
+            <!-- ===================== SCRIPTS ===================== -->
+            <TabItem Header="Scripts">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Style="{StaticResource Hint}">
+                        Named cmd scripts, callable from the launcher filter by their name (Enter runs them, they can
+                        also be pinned to panels). {{variables}} are resolved in the content and the working directory
+                        before execution.
+                    </TextBlock>
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="200" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Grid.Column="0" Margin="0,0,10,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <ListBox Grid.Row="0" x:Name="ScriptsList" DisplayMemberPath="Name"
+                                     SelectionChanged="ScriptsList_SelectionChanged" />
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="+ Add" Padding="10,4" Margin="0,0,8,0" Click="AddScript_Click" />
+                                <Button Content="- Remove" Padding="10,4" Click="RemoveScript_Click" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Grid.Column="1" x:Name="ScriptEditor" IsEnabled="False">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Name:" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Padding="6,4" />
+                            </Grid>
+                            <Grid Grid.Row="1" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Description:" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" Padding="6,4" />
+                            </Grid>
+                            <Grid Grid.Row="2" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Working dir:" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" Padding="6,4"
+                                         ToolTip="Optional. Supports {{variables}}, e.g. {{CurrentGitRepo}}" />
+                            </Grid>
+                            <CheckBox Grid.Row="3" Content="Keep cmd window open after execution"
+                                      IsChecked="{Binding KeepWindowOpen}" Margin="0,0,0,6" />
+                            <TextBlock Grid.Row="4" Text="Script content:" Margin="0,0,0,4" />
+                            <TextBox Grid.Row="5" Text="{Binding Content, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True" AcceptsTab="True" FontFamily="Consolas"
+                                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                     TextWrapping="NoWrap" Padding="6,4" />
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- ===================== PACKAGES ===================== -->
+            <TabItem Header="Packages">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Style="{StaticResource Hint}">
+                        Package comparison (package button in the launcher). Entries of the source folder whose name
+                        matches one of the regexes are compared with the target folder; the version is read from the
+                        trailing digits / dots of the name (e.g. MyLib.1.2.3). The target path is available as the
+                        {{path_target}} variable (alias {{patch_target}}), the source as {{path_source}}.
+                    </TextBlock>
+                    <Grid Grid.Row="1" Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Source path:" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" x:Name="PkgSourceBox" Padding="6,4" />
+                        <Button Grid.Column="2" Content="Browse..." Padding="10,4" Margin="8,0,0,0" Click="BrowsePkgSource_Click" />
+                    </Grid>
+                    <Grid Grid.Row="2" Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Target path:" VerticalAlignment="Center" />
+                        <TextBox Grid.Column="1" x:Name="PkgTargetBox" Padding="6,4" />
+                        <Button Grid.Column="2" Content="Browse..." Padding="10,4" Margin="8,0,0,0" Click="BrowsePkgTarget_Click" />
+                    </Grid>
+                    <TextBlock Grid.Row="3" Text="Package name patterns (regex, empty list = all entries):" Margin="0,6,0,4" />
+                    <DataGrid Grid.Row="4" x:Name="PatternsGrid" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Regex" Binding="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}" Width="*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="+ Add" Padding="10,4" Margin="0,0,8,0" Click="AddPattern_Click" />
+                        <Button Content="- Remove" Padding="10,4" Click="RemovePattern_Click" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
             <!-- ===================== COLOURS ===================== -->
             <TabItem Header="Colors">
                 <StackPanel Margin="12" HorizontalAlignment="Left">

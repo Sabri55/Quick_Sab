@@ -28,6 +28,10 @@ namespace Quick_Sab.Services
                 case ActionType.Command:
                     RunCommand(value, workDir, item.KeepWindowOpen);
                     break;
+
+                case ActionType.Script:
+                    RunScript(value, workDir, item.KeepWindowOpen);
+                    break;
             }
         }
 
@@ -74,6 +78,28 @@ namespace Quick_Sab.Services
             {
                 FileName = "cmd.exe",
                 Arguments = (keepOpen ? "/k " : "/c ") + command,
+                UseShellExecute = true
+            };
+
+            workDir = Environment.ExpandEnvironmentVariables(workDir ?? "").Trim();
+            if (!string.IsNullOrEmpty(workDir) && Directory.Exists(workDir))
+                psi.WorkingDirectory = workDir;
+
+            Process.Start(psi);
+        }
+
+        /// <summary>Writes the (already variable-resolved) script to a temporary .cmd file and runs it.</summary>
+        private static void RunScript(string content, string workDir, bool keepOpen)
+        {
+            if (string.IsNullOrWhiteSpace(content)) return;
+
+            var file = Path.Combine(Path.GetTempPath(), "quick_sab_script_" + Guid.NewGuid().ToString("N") + ".cmd");
+            File.WriteAllText(file, content, System.Text.Encoding.Default);
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = (keepOpen ? "/k " : "/c ") + "\"" + file + "\"",
                 UseShellExecute = true
             };
 
