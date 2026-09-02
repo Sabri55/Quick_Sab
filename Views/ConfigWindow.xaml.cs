@@ -59,7 +59,7 @@ namespace Quick_Sab.Views
             PatternsGrid.ItemsSource = _cfg.PackageCompare.Patterns;
             ScriptsList.ItemsSource = _cfg.Scripts;
 
-            foreach (var name in new[] { "Share", "Web", "Command" })
+            foreach (var name in new[] { "Share", "Web", "Command", "Script" })
             {
                 _cfg.Colors.TryGetValue(name, out var hex);
                 _colors.Add(new ColorEntry { Name = name, Hex = hex ?? "#808080" });

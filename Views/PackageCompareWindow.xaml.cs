@@ -35,11 +35,18 @@ namespace Quick_Sab.Views
 
         private static PackageCompareConfig Cfg => ConfigService.Current.PackageCompare;
 
+        /// <summary>Raw configured path, with the resolved value appended when variables were used.</summary>
+        private static string Describe(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return "(not set)";
+            var resolved = PackageCompareService.ResolvePath(raw);
+            return string.Equals(raw, resolved, StringComparison.Ordinal) ? raw : raw + "  ->  " + resolved;
+        }
+
         private void RunCompare()
         {
             _rows.Clear();
-            PathsText.Text = "Source: " + (string.IsNullOrWhiteSpace(Cfg?.SourcePath) ? "(not set)" : Cfg.SourcePath)
-                + "\nTarget: " + (string.IsNullOrWhiteSpace(Cfg?.TargetPath) ? "(not set)" : Cfg.TargetPath);
+            PathsText.Text = "Source: " + Describe(Cfg?.SourcePath) + "\nTarget: " + Describe(Cfg?.TargetPath);
 
             List<PackageComparison> result;
             try

@@ -72,18 +72,27 @@ namespace Quick_Sab.Services
             return list;
         }
 
+        /// <summary>Resolves {{variables}} and %ENV% in a configured path.</summary>
+        public static string ResolvePath(string path)
+        {
+            return Environment.ExpandEnvironmentVariables(VariableResolver.Resolve(path ?? "", null)).Trim();
+        }
+
         /// <summary>Compares the source folder against the target folder. One row per source package.</summary>
         public static List<PackageComparison> Compare(PackageCompareConfig cfg)
         {
             if (cfg == null || string.IsNullOrWhiteSpace(cfg.SourcePath))
                 throw new InvalidOperationException("Set the source path in Settings -> Packages.");
-            if (!Directory.Exists(cfg.SourcePath))
-                throw new InvalidOperationException("Source path not found: " + cfg.SourcePath);
+
+            var sourcePath = ResolvePath(cfg.SourcePath);
+            var targetPath = ResolvePath(cfg.TargetPath);
+            if (!Directory.Exists(sourcePath))
+                throw new InvalidOperationException("Source path not found: " + sourcePath);
 
             var regexes = CompilePatterns(cfg);
-            var source = Scan(cfg.SourcePath, regexes);
-            var target = !string.IsNullOrWhiteSpace(cfg.TargetPath) && Directory.Exists(cfg.TargetPath)
-                ? Scan(cfg.TargetPath, regexes)
+            var source = Scan(sourcePath, regexes);
+            var target = !string.IsNullOrWhiteSpace(targetPath) && Directory.Exists(targetPath)
+                ? Scan(targetPath, regexes)
                 : new Dictionary<string, Entry>();
 
             return source.Values
@@ -112,6 +121,7 @@ namespace Quick_Sab.Services
         /// </summary>
         public static void UpdatePackage(PackageComparison item, string targetRoot)
         {
+            targetRoot = ResolvePath(targetRoot);
             if (string.IsNullOrWhiteSpace(targetRoot))
                 throw new InvalidOperationException("Set the target path in Settings -> Packages.");
 

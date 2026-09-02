@@ -308,7 +308,8 @@
                         Package comparison (package button in the launcher). Entries of the source folder whose name
                         matches one of the regexes are compared with the target folder; the version is read from the
                         trailing digits / dots of the name (e.g. MyLib.1.2.3). The target path is available as the
-                        {{path_target}} variable (alias {{patch_target}}), the source as {{path_source}}.
+                        {{PathTarget}} variable, the source as {{PathSource}}.
+                        Both paths accept {{variables}} themselves (e.g. {{CurrentGitRepo}}\packages).
                     </TextBlock>
                     <Grid Grid.Row="1" Margin="0,0,0,6">
                         <Grid.ColumnDefinitions>
