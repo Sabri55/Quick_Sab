@@ -21,17 +21,29 @@ namespace Quick_Sab.Services
         /// <summary>Git repository currently selected in the launcher list (set by MainWindow; may be null).</summary>
         public static GitRepo CurrentGitRepo { get; set; }
 
+        [ThreadStatic] private static int _depth;
+
         public static string Resolve(string input, AppConfig config)
         {
             if (string.IsNullOrEmpty(input)) return input ?? "";
             config ??= ConfigService.Current;
 
-            return Pattern.Replace(input, m =>
+            if (_depth > 8) return input; // self-referencing variables: stop expanding
+            _depth++;
+            try
             {
-                var name = m.Groups[1].Value;
-                var resolved = ResolveOne(name, config);
-                return resolved ?? m.Value; // unknown variable: left untouched
-            });
+                return Pattern.Replace(input, m =>
+                {
+                    var name = m.Groups[1].Value;
+                    var resolved = ResolveOne(name, config);
+                    // Unknown variable: left untouched. Known: resolve nested {{variables}} too.
+                    return resolved == null ? m.Value : Resolve(resolved, config);
+                });
+            }
+            finally
+            {
+                _depth--;
+            }
         }
 
         private static string ResolveOne(string name, AppConfig config)

@@ -73,6 +73,12 @@ namespace Quick_Sab.Models
 
         /// <summary>Command: keep the cmd window open after execution (cmd /k).</summary>
         public bool KeepWindowOpen { get => _keepWindowOpen; set => Set(ref _keepWindowOpen, value); }
+
+        private ScriptShell _scriptShell = ScriptShell.Cmd;
+
+        /// <summary>Shell used when Type is Script (omitted from JSON when Cmd).</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public ScriptShell ScriptShell { get => _scriptShell; set => Set(ref _scriptShell, value); }
     }
 
     /// <summary>Local git repository, usable as {{Name}} / {{git_path_N}} in values.</summary>
@@ -92,7 +98,17 @@ namespace Quick_Sab.Models
         public string IV { get; set; } = "";
     }
 
-    /// <summary>Named multi-line cmd script callable from the launcher filter.</summary>
+    /// <summary>Shell used to run a script.</summary>
+    public enum ScriptShell
+    {
+        /// <summary>cmd.exe, through a temporary .bat file.</summary>
+        Cmd,
+
+        /// <summary>Windows PowerShell, through a temporary .ps1 file.</summary>
+        PowerShell
+    }
+
+    /// <summary>Named multi-line script callable from the launcher filter.</summary>
     public class ScriptEntry : NotifyBase
     {
         private string _name = "";
@@ -100,6 +116,10 @@ namespace Quick_Sab.Models
         private string _content = "";
         private string _workingDirectory = "";
         private bool _keepWindowOpen = true;
+        private ScriptShell _shell = ScriptShell.Cmd;
+
+        /// <summary>Shell used to run the script (cmd .bat or PowerShell .ps1).</summary>
+        public ScriptShell Shell { get => _shell; set => Set(ref _shell, value); }
 
         /// <summary>Name typed in the launcher filter to run the script.</summary>
         public string Name { get => _name; set => Set(ref _name, value); }

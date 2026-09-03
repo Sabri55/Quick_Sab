@@ -30,15 +30,13 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="⚡ Quick_Sab" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" x:Name="HotkeyLabel" Text="" Margin="12,0,0,0" FontSize="12"
                            Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
                 <Button Grid.Column="2" Style="{StaticResource IconButton}" FontFamily="Segoe MDL2 Assets" Content="&#xE72E;" FontSize="14" ToolTip="AES encrypt / decrypt" Click="Crypto_Click" />
-                <Button Grid.Column="3" Style="{StaticResource IconButton}" FontFamily="Segoe MDL2 Assets" Content="&#xE7B8;" FontSize="14" ToolTip="Package compare" Click="PackageCompare_Click" />
-                <Button Grid.Column="4" Style="{StaticResource IconButton}" Content="⚙" ToolTip="Settings" Click="Config_Click" />
-                <Button Grid.Column="5" Style="{StaticResource IconButton}" Content="✕" ToolTip="Hide (Esc)" Click="Hide_Click" />
+                <Button Grid.Column="3" Style="{StaticResource IconButton}" Content="⚙" ToolTip="Settings" Click="Config_Click" />
+                <Button Grid.Column="4" Style="{StaticResource IconButton}" Content="✕" ToolTip="Hide (Esc)" Click="Hide_Click" />
             </Grid>
 
             <!-- Filter -->

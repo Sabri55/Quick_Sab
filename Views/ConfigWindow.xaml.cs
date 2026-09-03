@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Threading;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -26,7 +28,7 @@ namespace Quick_Sab.Views
         private readonly AppConfig _cfg;
         private readonly ObservableCollection<ColorEntry> _colors = new ObservableCollection<ColorEntry>();
 
-        public ConfigWindow()
+        public ConfigWindow(bool openPackagesTab = false)
         {
             InitializeComponent();
 
@@ -65,6 +67,8 @@ namespace Quick_Sab.Views
                 _colors.Add(new ColorEntry { Name = name, Hex = hex ?? "#808080" });
             }
             ColorsList.ItemsSource = _colors;
+
+            if (openPackagesTab) PackagesTab.IsSelected = true;
         }
 
         private static AppConfig Clone(AppConfig source)
@@ -246,6 +250,47 @@ namespace Quick_Sab.Views
         }
 
         // ---------------- Packages ----------------
+
+        /// <summary>Package settings as currently edited in the tab (not yet saved).</summary>
+        private PackageCompareConfig BuildPkgConfig()
+        {
+            PatternsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            return new PackageCompareConfig
+            {
+                SourcePath = (PkgSourceBox.Text ?? "").Trim(),
+                TargetPath = (PkgTargetBox.Text ?? "").Trim(),
+                Patterns = _cfg.PackageCompare.Patterns
+            };
+        }
+
+        /// <summary>Opens the comparison in an independent window, using the values currently edited.</summary>
+        private void PkgCompare_Click(object sender, RoutedEventArgs e)
+        {
+            new PackageCompareWindow(BuildPkgConfig()).Show();
+        }
+
+        private void OpenPkgSource_Click(object sender, RoutedEventArgs e) => OpenPkgFolder(PkgSourceBox.Text);
+        private void OpenPkgTarget_Click(object sender, RoutedEventArgs e) => OpenPkgFolder(PkgTargetBox.Text);
+
+        /// <summary>Opens the (variable-resolved) folder in Explorer.</summary>
+        private void OpenPkgFolder(string raw)
+        {
+            var path = PackageCompareService.ResolvePath(raw);
+            if (string.IsNullOrWhiteSpace(path)) return;
+            if (!Directory.Exists(path))
+            {
+                MessageBox.Show(this, "Folder not found:\n" + path, "Quick_Sab", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Quick_Sab", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         private void BrowsePkgSource_Click(object sender, RoutedEventArgs e) => BrowseInto(PkgSourceBox);
         private void BrowsePkgTarget_Click(object sender, RoutedEventArgs e) => BrowseInto(PkgTargetBox);

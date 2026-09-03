@@ -1,14 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using Quick_Sab.Models;
 using Quick_Sab.Services;
 
 namespace Quick_Sab.Views
 {
-    /// <summary>Compares the packages of the configured source folder with the target folder.</summary>
+    /// <summary>
+    /// Independent (non-modal) window comparing the packages of the source folder with the target
+    /// folder. Works on the PackageCompareConfig given to the constructor (e.g. the values being
+    /// edited in the settings), or on the saved configuration by default.
+    /// </summary>
     public partial class PackageCompareWindow : Window
     {
         /// <summary>Row of the comparison grid.</summary>
@@ -25,15 +31,16 @@ namespace Quick_Sab.Views
         }
 
         private readonly ObservableCollection<PackageRow> _rows = new ObservableCollection<PackageRow>();
+        private readonly PackageCompareConfig _cfg;
+        private bool _updating;
 
-        public PackageCompareWindow()
+        public PackageCompareWindow(PackageCompareConfig cfg = null)
         {
             InitializeComponent();
+            _cfg = cfg ?? ConfigService.Current.PackageCompare;
             ResultGrid.ItemsSource = _rows;
             Loaded += (s, e) => RunCompare();
         }
-
-        private static PackageCompareConfig Cfg => ConfigService.Current.PackageCompare;
 
         /// <summary>Raw configured path, with the resolved value appended when variables were used.</summary>
         private static string Describe(string raw)
@@ -46,12 +53,13 @@ namespace Quick_Sab.Views
         private void RunCompare()
         {
             _rows.Clear();
-            PathsText.Text = "Source: " + Describe(Cfg?.SourcePath) + "\nTarget: " + Describe(Cfg?.TargetPath);
+            SourceLinkText.Text = Describe(_cfg?.SourcePath);
+            TargetLinkText.Text = Describe(_cfg?.TargetPath);
 
             List<PackageComparison> result;
             try
             {
-                result = PackageCompareService.Compare(Cfg);
+                result = PackageCompareService.Compare(_cfg);
             }
             catch (Exception ex)
             {
@@ -66,13 +74,51 @@ namespace Quick_Sab.Views
             SummaryText.Text = _rows.Count + " package(s) found, " + mismatch + " to update.";
         }
 
+        private void SourceLink_Click(object sender, RoutedEventArgs e) => OpenFolder(_cfg?.SourcePath);
+        private void TargetLink_Click(object sender, RoutedEventArgs e) => OpenFolder(_cfg?.TargetPath);
+
+        /// <summary>Opens the (variable-resolved) configured folder in Explorer.</summary>
+        private void OpenFolder(string raw)
+        {
+            var path = PackageCompareService.ResolvePath(raw);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                MessageBox.Show(this, "The path is not set (Settings -> Packages).", "Quick_Sab",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (!System.IO.Directory.Exists(path))
+            {
+                MessageBox.Show(this, "Folder not found:\n" + path, "Quick_Sab",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Quick_Sab", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void Refresh_Click(object sender, RoutedEventArgs e)
         {
+            if (_updating) return;
             RunCompare();
         }
 
-        private void UpdateSelected_Click(object sender, RoutedEventArgs e)
+        private void Close_Click(object sender, RoutedEventArgs e)
         {
+            Close();
+        }
+
+        /// <summary>Runs the copies in parallel on background threads; the UI stays responsive.</summary>
+        private async void UpdateSelected_Click(object sender, RoutedEventArgs e)
+        {
+            if (_updating) return;
+
             var rows = _rows.Where(r => r.Selected).ToList();
             if (rows.Count == 0)
             {
@@ -86,23 +132,39 @@ namespace Quick_Sab.Views
                 "Quick_Sab", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (answer != MessageBoxResult.Yes) return;
 
-            var errors = new List<string>();
+            _updating = true;
+            UpdateButton.IsEnabled = false;
+            RefreshButton.IsEnabled = false;
+            var total = rows.Count;
             var done = 0;
-            foreach (var row in rows)
+            SummaryText.Text = "Updating 0 / " + total + "...";
+            CopyProgress.Maximum = total;
+            CopyProgress.Value = 0;
+            CopyProgress.Visibility = Visibility.Visible;
+            var progress = new Progress<int>(d =>
             {
-                try
-                {
-                    PackageCompareService.UpdatePackage(row.Item, Cfg?.TargetPath);
-                    done++;
-                }
-                catch (Exception ex)
-                {
-                    errors.Add(row.Name + ": " + ex.Message);
-                }
+                CopyProgress.Value = d;
+                SummaryText.Text = "Updating " + d + " / " + total + "...";
+            });
+
+            List<string> errors;
+            try
+            {
+                errors = await PackageCompareService.UpdatePackagesAsync(
+                    rows.Select(r => r.Item),
+                    _cfg?.TargetPath,
+                    _ => ((IProgress<int>)progress).Report(Interlocked.Increment(ref done)));
+            }
+            finally
+            {
+                _updating = false;
+                UpdateButton.IsEnabled = true;
+                RefreshButton.IsEnabled = true;
+                CopyProgress.Visibility = Visibility.Collapsed;
             }
 
             RunCompare();
-            SummaryText.Text = done + " package(s) updated" + (errors.Count > 0 ? ", " + errors.Count + " error(s)." : ".");
+            SummaryText.Text = (total - errors.Count) + " package(s) updated" + (errors.Count > 0 ? ", " + errors.Count + " error(s)." : ".");
             if (errors.Count > 0)
                 MessageBox.Show(this, string.Join("\n", errors), "Quick_Sab", MessageBoxButton.OK, MessageBoxImage.Warning);
         }

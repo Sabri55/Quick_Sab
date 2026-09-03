@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Quick_Sab.Models;
 
 namespace Quick_Sab.Services
@@ -38,8 +40,11 @@ namespace Quick_Sab.Services
     /// </summary>
     public static class PackageCompareService
     {
-        /// <summary>Trailing version in a name: digits and dots, e.g. "MyLib.1.2.3" -> "1.2.3".</summary>
-        private static readonly Regex VersionSuffix = new Regex(@"\d[\d.]*$", RegexOptions.Compiled);
+        /// <summary>
+        /// Trailing version in a name: starts with a digit right after a separator (. - _ space)
+        /// and takes everything up to the end of the name, e.g. "package_5.2_up" -> "5.2_up", "MyLib.1.2.3-beta2" -> "1.2.3-beta2".
+        /// </summary>
+        private static readonly Regex VersionSuffix = new Regex(@"(?<=^|[.\-_ ])\d[0-9A-Za-z.\-_ ]*$", RegexOptions.Compiled);
 
         private sealed class Entry
         {
@@ -115,6 +120,27 @@ namespace Quick_Sab.Services
                 .ToList();
         }
 
+        /// <summary>Updates the given packages in parallel. Returns the errors ("name: message").</summary>
+        public static async Task<List<string>> UpdatePackagesAsync(
+            IEnumerable<PackageComparison> items, string targetRoot, Action<PackageComparison> onDone = null)
+        {
+            var errors = new ConcurrentBag<string>();
+            var resolvedRoot = ResolvePath(targetRoot);
+            await Task.WhenAll(items.Select(item => Task.Run(() =>
+            {
+                try
+                {
+                    UpdatePackage(item, resolvedRoot);
+                    onDone?.Invoke(item);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(item.SourceName + ": " + ex.Message);
+                }
+            })));
+            return errors.ToList();
+        }
+
         /// <summary>
         /// Updates one package: deletes the old target entry (if any) and copies the source entry
         /// into the target folder, creating the target folder when it does not exist yet.
@@ -165,17 +191,27 @@ namespace Quick_Sab.Services
             return new Entry { Name = name, FullPath = fullPath, IsDir = isDir, Base = baseName, Version = version, Ext = ext };
         }
 
-        /// <summary>Numeric segment-by-segment version comparison ("1.10" &gt; "1.9").</summary>
+        /// <summary>
+        /// Segment-by-segment version comparison ("1.10" &gt; "1.9"): numeric when both segments
+        /// are numbers, case-insensitive text otherwise ("1.2.3b" &gt; "1.2.3a").
+        /// </summary>
         public static int CompareVersions(string a, string b)
         {
-            var pa = (a ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-            var pb = (b ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+            var pa = (a ?? "").Split(new[] { '.', '-', '_', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            var pb = (b ?? "").Split(new[] { '.', '-', '_', ' ' }, StringSplitOptions.RemoveEmptyEntries);
             for (var i = 0; i < Math.Max(pa.Length, pb.Length); i++)
             {
-                long va = 0, vb = 0;
-                if (i < pa.Length) long.TryParse(pa[i], out va);
-                if (i < pb.Length) long.TryParse(pb[i], out vb);
-                if (va != vb) return va < vb ? -1 : 1;
+                var sa = i < pa.Length ? pa[i] : "";
+                var sb = i < pb.Length ? pb[i] : "";
+                if (long.TryParse(sa, out var va) && long.TryParse(sb, out var vb))
+                {
+                    if (va != vb) return va < vb ? -1 : 1;
+                }
+                else
+                {
+                    var c = string.Compare(sa, sb, StringComparison.OrdinalIgnoreCase);
+                    if (c != 0) return c < 0 ? -1 : 1;
+                }
             }
             return 0;
         }
@@ -183,10 +219,10 @@ namespace Quick_Sab.Services
         private static void CopyDirectory(string source, string dest)
         {
             Directory.CreateDirectory(dest);
-            foreach (var file in Directory.EnumerateFiles(source))
-                File.Copy(file, Path.Combine(dest, Path.GetFileName(file)), true);
-            foreach (var dir in Directory.EnumerateDirectories(source))
-                CopyDirectory(dir, Path.Combine(dest, Path.GetFileName(dir)));
+            Parallel.ForEach(Directory.EnumerateFiles(source), file =>
+                File.Copy(file, Path.Combine(dest, Path.GetFileName(file)), true));
+            Parallel.ForEach(Directory.EnumerateDirectories(source), dir =>
+                CopyDirectory(dir, Path.Combine(dest, Path.GetFileName(dir))));
         }
     }
 }

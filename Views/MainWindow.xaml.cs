@@ -214,7 +214,8 @@ namespace Quick_Sab.Views
                     Type = ActionType.Script,
                     Description = s.Description,
                     WorkingDirectory = s.WorkingDirectory,
-                    KeepWindowOpen = s.KeepWindowOpen
+                    KeepWindowOpen = s.KeepWindowOpen,
+                    ScriptShell = s.Shell
                 });
             }
             return list;
@@ -246,16 +247,6 @@ namespace Quick_Sab.Views
             RunDialog(() =>
             {
                 var win = new CryptoWindow();
-                if (IsVisible) win.Owner = this;
-                return win.ShowDialog();
-            });
-        }
-
-        private void PackageCompare_Click(object sender, RoutedEventArgs e)
-        {
-            RunDialog(() =>
-            {
-                var win = new PackageCompareWindow();
                 if (IsVisible) win.Owner = this;
                 return win.ShowDialog();
             });

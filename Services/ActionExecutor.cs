@@ -30,7 +30,7 @@ namespace Quick_Sab.Services
                     break;
 
                 case ActionType.Script:
-                    RunScript(value, workDir, item.KeepWindowOpen);
+                    RunScript(value, workDir, item.KeepWindowOpen, item.ScriptShell);
                     break;
             }
         }
@@ -88,20 +88,37 @@ namespace Quick_Sab.Services
             Process.Start(psi);
         }
 
-        /// <summary>Writes the (already variable-resolved) script to a temporary .cmd file and runs it.</summary>
-        private static void RunScript(string content, string workDir, bool keepOpen)
+        /// <summary>Writes the (already variable-resolved) script to a temporary .bat / .ps1 file and runs it.</summary>
+        private static void RunScript(string content, string workDir, bool keepOpen, ScriptShell shell)
         {
             if (string.IsNullOrWhiteSpace(content)) return;
 
-            var file = Path.Combine(Path.GetTempPath(), "quick_sab_script_" + Guid.NewGuid().ToString("N") + ".cmd");
-            File.WriteAllText(file, content, System.Text.Encoding.Default);
+            var ext = shell == ScriptShell.PowerShell ? ".ps1" : ".bat";
+            var file = Path.Combine(Path.GetTempPath(), "quick_sab_script_" + Guid.NewGuid().ToString("N") + ext);
+            var encoding = shell == ScriptShell.PowerShell
+                ? (System.Text.Encoding)new System.Text.UTF8Encoding(true) // BOM so PowerShell reads accents correctly
+                : System.Text.Encoding.Default;
+            File.WriteAllText(file, content, encoding);
 
-            var psi = new ProcessStartInfo
+            ProcessStartInfo psi;
+            if (shell == ScriptShell.PowerShell)
             {
-                FileName = "cmd.exe",
-                Arguments = (keepOpen ? "/k " : "/c ") + "\"" + file + "\"",
-                UseShellExecute = true
-            };
+                psi = new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = "-ExecutionPolicy Bypass -NoLogo " + (keepOpen ? "-NoExit " : "") + "-File \"" + file + "\"",
+                    UseShellExecute = true
+                };
+            }
+            else
+            {
+                psi = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = (keepOpen ? "/k " : "/c ") + "\"" + file + "\"",
+                    UseShellExecute = true
+                };
+            }
 
             workDir = Environment.ExpandEnvironmentVariables(workDir ?? "").Trim();
             if (!string.IsNullOrEmpty(workDir) && Directory.Exists(workDir))
